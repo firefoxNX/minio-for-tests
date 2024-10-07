@@ -650,8 +650,9 @@ class MinioBinaryDownloadUrl {
 
                 throw new UnknownArchitectureError(arch, minioPlatform)
             case "x86_64":
+                case "amd64":
             case "x64":
-                return "x86_64"
+                return "amd64"
             case "arm64":
                 return "arm64"
             case "aarch64":
