@@ -17,3 +17,5 @@ coverage
 #editor settings
 .idea
 .editorconfig
+
+minio_data_tst
