@@ -16,7 +16,13 @@ const run = async () => {
     });
     console.log('Minio server started');
     const s3Client = new S3Client({
-        region: 'us-east-1'
+        credentials: {
+            accessKeyId: 'minioadmin',
+            secretAccessKey: 'minioadmin'
+        },
+        endpoint: 'http://127.0.0.1:63208',
+        region: 'us-east-1',
+        forcePathStyle: true
     });
     // random bucket name
     const bucketName = 'bucket-' + Math.random().toString(36).substring(7);

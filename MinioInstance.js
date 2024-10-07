@@ -1,6 +1,6 @@
-const { fork, spawn } = require("child_process");
+const {fork, spawn} = require("child_process");
 const path = require("path");
-const { MinioBinary } = require("./MinioBinary");
+const {MinioBinary} = require("./MinioBinary");
 const minioBinary = new MinioBinary();
 const debug = require("debug");
 const {
@@ -9,8 +9,8 @@ const {
     killProcess,
     checkBinaryPermissions
 } = require("./utils");
-const { lt } = require("semver");
-const { EventEmitter } = require("events");
+const {lt} = require("semver");
+const {EventEmitter} = require("events");
 
 const {
     GenericMMSError,
@@ -29,7 +29,7 @@ const log = debug("MinioTST:MinioInstance")
 
 let MinioInstanceEvents
 
-;(function(MinioInstanceEvents) {
+;(function (MinioInstanceEvents) {
     MinioInstanceEvents["instanceReplState"] = "instanceReplState"
     MinioInstanceEvents["instancePrimary"] = "instancePrimary"
     MinioInstanceEvents["instanceReady"] = "instanceReady"
@@ -59,9 +59,9 @@ class MinioInstance extends EventEmitter {
 
     constructor(opts) {
         super()
-        this.instanceOpts = { ...opts.instance }
-        this.binaryOpts = { ...opts.binary }
-        this.spawnOpts = { ...opts.spawn }
+        this.instanceOpts = {...opts.instance}
+        this.binaryOpts = {...opts.binary}
+        this.spawnOpts = {...opts.spawn}
 
         this.on(MinioInstanceEvents.instanceReady, () => {
             this.isInstanceReady = true
@@ -114,8 +114,9 @@ class MinioInstance extends EventEmitter {
 
         const result = []
 
-        // result.push("--port", this.instanceOpts.port.toString())
         result.push("server", this.instanceOpts.dataPath)
+        result.push("--address", ":" + this.instanceOpts.port)
+        result.push("--console-address", ":9001")
 
         // "!!" converts the value to an boolean (double-invert) so that no "falsy" values are added
 
@@ -239,9 +240,10 @@ class MinioInstance extends EventEmitter {
      */
     _launchMinio(minioBin) {
         this.debug("_launchMinio: Launching Minio Process")
+        const cmdArgs = this.prepareCommandArgs()
         const childProcess = spawn(
             path.resolve(minioBin),
-            this.prepareCommandArgs(),
+            cmdArgs,
             {
                 ...this.spawnOpts,
                 stdio: "pipe" // ensure that stdio is always an pipe, regardless of user input
@@ -339,7 +341,7 @@ class MinioInstance extends EventEmitter {
 
         this.checkErrorInLine(line)
 
-        if(/MinIO Object Storage Server/i.test(line)) {
+        if (/MinIO Object Storage Server/i.test(line)) {
             this.emit(MinioInstanceEvents.instanceReady)
         }
     }
