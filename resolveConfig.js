@@ -36,7 +36,7 @@ let ResolveConfigVariables
 /** The Prefix for Environmental values */
 const ENV_CONFIG_PREFIX = "MINIOTST_"
 /** This Value exists here, because "defaultValues" can be changed with "setDefaultValue", but this property is constant */
-const DEFAULT_VERSION = "minio.RELEASE.2024-10-02T17-50-41Z"
+const DEFAULT_VERSION = "minio.RELEASE.2025-02-07T23-21-09Z"
 /** Default values for some config options that require explicit setting, it is constant so that the default values cannot be interfered with */
 const defaultValues = new Map([
     // apply app-default values here
