@@ -5,10 +5,10 @@ const {
     CreateBucketCommand,
     ListBucketsCommand,
     DeleteBucketCommand,
-    PutObjectCommand,
     GetObjectCommand,
     DeleteObjectCommand
 } = require('@aws-sdk/client-s3');
+const { Upload } = require('@aws-sdk/lib-storage');
 const fs = require('fs');
 
 const run = async () => {
@@ -48,8 +48,11 @@ const run = async () => {
         Key: 'test.txt',
         Body: fileStream
     };
-    const uploadCommand = new PutObjectCommand(uploadParams);
-    await s3Client.send(uploadCommand);
+    const upload = new Upload({
+        client: s3Client,
+        params: uploadParams
+    });
+    await upload.done();
     console.log('File uploaded');
     // download file
     const downloadParams = {

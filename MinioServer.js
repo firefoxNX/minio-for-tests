@@ -13,7 +13,6 @@ const {MinioInstance} = require("./MinioInstance");
 const debug = require("debug");
 const {EventEmitter} = require("events");
 const {promises: fspromises} = require("fs");
-const Minio = require('minio');
 const {EnsureInstanceError, StateError} = require("./errors");
 const os = require("os");
 
