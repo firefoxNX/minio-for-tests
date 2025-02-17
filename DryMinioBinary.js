@@ -215,7 +215,7 @@ class DryMinioBinary {
             const addExe = opts.platform === "win32" ? ".exe" : ""
             const dist = isLinuxOS(opts.os) ? opts.os.dist : opts.os.os
 
-            binaryName = `mongod-${opts.arch}-${dist}-${opts.version}${addExe}`
+            binaryName = `minio-${opts.arch}-${dist}-${opts.version}${addExe}`
         }
 
         return binaryName

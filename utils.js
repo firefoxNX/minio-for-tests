@@ -20,40 +20,6 @@ function errorWithCode(err) {
     return err instanceof Error && "code" in err
 }
 
-/**
- * Return input or default database
- * @param {string} dbName
- */
-function generateDbName(dbName) {
-    // this is ""(empty) to make it compatible with mongodb's uri format and mongoose's uri format
-    // (in mongodb its the auth database, in mongoose its the default database for models)
-    return dbName || ""
-}
-
-/**
- * Extracts the host and port information= require(a mongodb URI string.
- * @param {string} uri mongodb URI
- */
-function getHost(uri) {
-    // this will turn "mongodb://user:pass@localhost:port/authdb?queryoptions=1" to "localhost:port"
-    return uri.replace(/(?:^mongodb:\/{2})|(?:\/.*$)|(?:.*@)/gim, "")
-}
-
-/**
- * Basic MongoDB Connection string
- * @param host the host ip or an list of hosts
- * @param port the host port or undefined if "host" is an list of hosts
- * @param dbName the database to add to the uri (in mongodb its the auth database, in mongoose its the default database for models)
- * @param query extra uri-query options (joined with "&")
- */
-function uriTemplate(host, port, dbName, query) {
-    const hosts = !isNullOrUndefined(port) ? `${host}:${port}` : host
-
-    return (
-        `mongodb://${hosts}/${dbName}` +
-        (!isNullOrUndefined(query) ? `?${query.join("&")}` : "")
-    )
-}
 
 /**
  * Because since node 4.0.0 the internal util.is* functions got deprecated
@@ -313,9 +279,6 @@ async function removeDir(dirPath) {
 module.exports = {
     ManagerBase,
     ManagerAdvanced,
-    uriTemplate,
-    getHost,
-    generateDbName,
     isNullOrUndefined,
     assertion,
     killProcess,

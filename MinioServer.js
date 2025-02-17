@@ -1,8 +1,6 @@
 const getPort = require("get-port");
 const {
     assertion,
-    generateDbName,
-    uriTemplate,
     isNullOrUndefined,
     authDefault,
     statPath,
@@ -194,7 +192,6 @@ class MinioServer extends EventEmitter {
         // consider directly using "this.opts.instance", to pass through all options, even if not defined in "StartupInstanceData"
         const data = {
             port: port,
-            // dbName: generateDbName(instOpts.dbName),
             dataPath: instOpts.dataPath,
             ip: instOpts.ip ?? "127.0.0.1",
             tmpDir: undefined,
@@ -434,13 +431,6 @@ class MinioServer extends EventEmitter {
     }
 
     /**
-     * Get Information about the currently running instance, if it is not running it returns "undefined"
-     */
-    get instanceInfo() {
-        return this._instanceInfo
-    }
-
-    /**
      * Get Current state of this class
      */
     get state() {
@@ -511,38 +501,6 @@ class MinioServer extends EventEmitter {
     }
 
     /**
-     * Generate the Connection string used by mongodb
-     * @param otherDb add a database into the uri (in mongodb its the auth database, in mongoose its the default database for models)
-     * @param otherIp change the ip in the generated uri, default will otherwise always be "127.0.0.1"
-     * @throws if state is not "running" (or "starting")
-     * @throws if a server doesnt have "instanceInfo.port" defined
-     * @returns a valid mongo URI, by the definition of https://docs.mongodb.com/manual/reference/connection-string/
-     */
-    getUri(otherDb, otherIp) {
-        this.debug("getUri:", this.state, otherDb, otherIp)
-
-        switch (this.state) {
-            case MinioServerStates.running:
-            case MinioServerStates.starting:
-                break
-            case MinioServerStates.stopped:
-            default:
-                throw new StateError(
-                    [MinioServerStates.running, MinioServerStates.starting],
-                    this.state
-                )
-        }
-
-        assertionInstanceInfo(this._instanceInfo)
-
-        return uriTemplate(
-            otherIp || "127.0.0.1",
-            this._instanceInfo.port,
-            generateDbName(otherDb)
-        )
-    }
-
-    /**
      * Helper function to determine if the "auth" object is set and not to be disabled
      * This function expectes to be run after the auth object has been transformed to a object
      * @returns "true" when "auth" should be enabled
@@ -556,15 +514,6 @@ class MinioServer extends EventEmitter {
             ? !this.auth.disable // invert the disable boolean, because "auth" should only be disabled if "disabled = true"
             : true // if "this._replSetOpts.auth.disable" is not defined, default to true because "this._replSetOpts.auth" is defined
     }
-}
-
-/**
- * This function is to de-duplicate code
- * -> this couldnt be included in the class, because "asserts this.instanceInfo" is not allowed
- * @param val this.instanceInfo
- */
-function assertionInstanceInfo(val) {
-    assertion(!isNullOrUndefined(val), new Error('"instanceInfo" is undefined'))
 }
 
 /**

@@ -443,7 +443,7 @@ class MinioBinaryDownload {
             log(`httpDownload: trying to download "${downloadUrl}"`)
             https
                 .get(url, useHttpsOptions, response => {
-                    if (response.statusCode != 200) {
+                    if (response.statusCode !== 200) {
                         if (response.statusCode === 403) {
                             reject(
                                 new DownloadError(

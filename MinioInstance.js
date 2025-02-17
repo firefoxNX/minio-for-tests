@@ -253,6 +253,7 @@ class MinioInstance extends EventEmitter {
         childProcess.stdout?.on("data", this.stdoutHandler.bind(this))
         childProcess.on("close", this.closeHandler.bind(this))
         childProcess.on("error", this.errorHandler.bind(this))
+        childProcess.on("warning", this.errorHandler.bind(this))
 
         if (isNullOrUndefined(childProcess.pid)) {
             throw new StartBinaryFailedError(path.resolve(minioBin))
@@ -297,8 +298,9 @@ class MinioInstance extends EventEmitter {
      * @fires MinioInstance#instanceError
      */
     errorHandler(err) {
-        this.emit(MinioInstanceEvents.instanceRawError, err)
-        this.emit(MinioInstanceEvents.instanceError, err)
+        this.debug(`errorHandler: ${err.stack || err.toString()}`);
+        this.emit(MinioInstanceEvents.instanceRawError, err);
+        this.emit(MinioInstanceEvents.instanceError, err);
     }
 
     /**
