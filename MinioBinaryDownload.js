@@ -422,13 +422,14 @@ class MinioBinaryDownload {
     }
 
     /**
-     * Downlaod given httpOptions to tempDownloadLocation, then move it to downloadLocation
+     * Download given httpOptions to tempDownloadLocation, then move it to downloadLocation
+     * @param url URL to download
      * @param httpOptions The httpOptions directly passed to https.get
      * @param downloadLocation The location the File should be after the download
      * @param tempDownloadLocation The location the File should be while downloading
      */
     async httpDownload(url, httpOptions, downloadLocation, tempDownloadLocation) {
-        log("httpDownload")
+        log(`httpDownload: Downloading "${url}" downloadLocation = "${downloadLocation}" tempDownloadLocation = "${tempDownloadLocation}" httpOptions = "${JSON.stringify(httpOptions)}"`)
         const downloadUrl = this.assignDownloadingURL(url)
 
         const maxRedirects = parseInt(
@@ -520,10 +521,20 @@ class MinioBinaryDownload {
                     response.on("data", chunk => {
                         this.printDownloadProgress(chunk)
                     })
+
+                    response.on("error", err => {
+                        fileStream.close();
+                        reject(
+                            new DownloadError(
+                                downloadUrl,
+                                `Error during response: ${err.message} and stack: ${err.stack}`
+                            )
+                        );
+                    });
                 })
                 .on("error", err => {
                     // log it without having debug enabled
-                    console.error(`Couldnt download "${downloadUrl}"!`, err.message)
+                    console.error(`Unable to download "${downloadUrl}" with error: ${err.message} and stack: ${err.stack}`)
                     reject(new DownloadError(downloadUrl, err.message))
                 })
         })
