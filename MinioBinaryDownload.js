@@ -428,128 +428,48 @@ class MinioBinaryDownload {
      * @param downloadLocation The location the File should be after the download
      * @param tempDownloadLocation The location the File should be while downloading
      */
-    async httpDownload(url, httpOptions, downloadLocation, tempDownloadLocation) {
-        log(`httpDownload: Downloading "${url}" downloadLocation = "${downloadLocation}" tempDownloadLocation = "${tempDownloadLocation}" httpOptions = "${JSON.stringify(httpOptions)}"`)
-        const downloadUrl = this.assignDownloadingURL(url)
+    async httpDownload(url, httpOptions, downloadLocation, tempDownloadLocation, maxRetries = 3) {
+        log(`httpDownload: Downloading "${url}" downloadLocation = "${downloadLocation}" tempDownloadLocation = "${tempDownloadLocation}" httpOptions = "${JSON.stringify(httpOptions)}"`);
+        const downloadUrl = this.assignDownloadingURL(url);
 
-        const maxRedirects = parseInt(
-            resolveConfig(ResolveConfigVariables.MAX_REDIRECTS) || ""
-        )
-        const useHttpsOptions = {
-            maxRedirects: Number.isNaN(maxRedirects) ? 2 : maxRedirects,
-            ...httpOptions
-        }
-
-        const maxRetries = 3;
-        let attempt = 0;
-
-        while (attempt < maxRetries) {
-            attempt++;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                return await new Promise((resolve, reject) => {
-                    log(`httpDownload: trying to download "${downloadUrl}", attempt ${attempt}`)
-                    https
-                        .get(url, useHttpsOptions, response => {
-                            if (response.statusCode !== 200) {
-                                if (response.statusCode === 403) {
-                                    reject(
-                                        new DownloadError(
-                                            downloadUrl,
-                                            "Status Code is 403 (Minio's 404)\n" +
-                                            "This means that the requested version-platform combination doesn't exist\n" +
-                                            "Try to use different version 'new MinioTestServer({ binary: { version: 'X.Y.Z' } })'\n" +
-                                            "List of available versions can be found here: " +
-                                            "https://www.miniob.com/download-center/community/releases/archive"
-                                        )
-                                    )
+                const response = await fetch(url);
 
-                                    return
-                                }
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        throw new DownloadError(
+                            downloadUrl,
+                            "Status Code is 403 (Minio's 404)\n" +
+                            "This means that the requested version-platform combination doesn't exist\n" +
+                            "Try to use different version 'new MinioTestServer({ binary: { version: 'X.Y.Z' } })'\n" +
+                            "List of available versions can be found here: " +
+                            "https://dl.min.io/server/minio/release/linux-amd64/archive/"
+                        );
+                    }
+                    throw new DownloadError(downloadUrl, `Status Code isn't 200! (it is ${response.status})`);
+                }
 
-                                reject(
-                                    new DownloadError(
-                                        downloadUrl,
-                                        `Status Code isn't 200! (it is ${response.statusCode})`
-                                    )
-                                )
+                const fileStream = createWriteStream(tempDownloadLocation);
+                const reader = response.body.getReader();
+                const pump = async () => {
+                    const {done, value} = await reader.read();
+                    if (done) {
+                        fileStream.close();
+                        await fspromises.rename(tempDownloadLocation, downloadLocation);
+                        log(`httpDownload: moved "${tempDownloadLocation}" to "${downloadLocation}"`);
+                        return downloadLocation;
+                    }
+                    fileStream.write(value);
+                    return pump();
+                };
 
-                                return
-                            }
-                            if (typeof response.headers["content-length"] != "string") {
-                                reject(
-                                    new DownloadError(
-                                        downloadUrl,
-                                        'Response header "content-length" is empty!'
-                                    )
-                                )
-
-                                return
-                            }
-
-                            this.dlProgress.current = 0
-                            this.dlProgress.length = parseInt(
-                                response.headers["content-length"],
-                                10
-                            )
-                            this.dlProgress.totalMb =
-                                Math.round((this.dlProgress.length / 1048576) * 10) / 10
-
-                            const fileStream = createWriteStream(tempDownloadLocation)
-
-                            response.pipe(fileStream)
-
-                            fileStream.on("finish", async () => {
-                                if (
-                                    this.dlProgress.current < this.dlProgress.length &&
-                                    !httpOptions.path?.endsWith(".md5")
-                                ) {
-                                    reject(
-                                        new DownloadError(
-                                            downloadUrl,
-                                            `Too small (${this.dlProgress.current} bytes) minio binary downloaded.`
-                                        )
-                                    )
-
-                                    return
-                                }
-
-                                this.printDownloadProgress({length: 0}, true)
-
-                                fileStream.close()
-                                await fspromises.rename(tempDownloadLocation, downloadLocation)
-                                log(
-                                    `httpDownload: moved "${tempDownloadLocation}" to "${downloadLocation}"`
-                                )
-
-                                resolve(downloadLocation)
-                            })
-
-                            response.on("data", chunk => {
-                                this.printDownloadProgress(chunk)
-                            })
-
-                            response.on("error", err => {
-                                fileStream.close();
-                                reject(
-                                    new DownloadError(
-                                        downloadUrl,
-                                        `Error during response: ${err.message} and stack: ${err.stack}`
-                                    )
-                                );
-                            });
-                        })
-                        .on("error", err => {
-                            // log it without having debug enabled
-                            console.error(`Unable to download "${downloadUrl}" with error: ${err.message} and stack: ${err.stack}`)
-                            reject(new DownloadError(downloadUrl, err.message))
-                        })
-                });
+                return await pump();
             } catch (error) {
                 log(`httpDownload: attempt ${attempt} failed with error: ${error.message}`);
-                if (attempt >= maxRetries) {
-                    throw error;
+                if (attempt === maxRetries) {
+                    throw new DownloadError(downloadUrl, `Failed after ${maxRetries} attempts: ${error.message}`);
                 }
-                log(`httpDownload: retrying download, attempt ${attempt + 1}`);
             }
         }
     }
