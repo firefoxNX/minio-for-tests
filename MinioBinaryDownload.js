@@ -440,104 +440,118 @@ class MinioBinaryDownload {
             ...httpOptions
         }
 
-        return new Promise((resolve, reject) => {
-            log(`httpDownload: trying to download "${downloadUrl}"`)
-            https
-                .get(url, useHttpsOptions, response => {
-                    if (response.statusCode !== 200) {
-                        if (response.statusCode === 403) {
-                            reject(
-                                new DownloadError(
-                                    downloadUrl,
-                                    "Status Code is 403 (Minio's 404)\n" +
-                                    "This means that the requested version-platform combination doesn't exist\n" +
-                                    "Try to use different version 'new MinioTestServer({ binary: { version: 'X.Y.Z' } })'\n" +
-                                    "List of available versions can be found here: " +
-                                    "https://www.miniob.com/download-center/community/releases/archive"
+        const maxRetries = 3;
+        let attempt = 0;
+
+        while (attempt < maxRetries) {
+            attempt++;
+            try {
+                return await new Promise((resolve, reject) => {
+                    log(`httpDownload: trying to download "${downloadUrl}", attempt ${attempt}`)
+                    https
+                        .get(url, useHttpsOptions, response => {
+                            if (response.statusCode !== 200) {
+                                if (response.statusCode === 403) {
+                                    reject(
+                                        new DownloadError(
+                                            downloadUrl,
+                                            "Status Code is 403 (Minio's 404)\n" +
+                                            "This means that the requested version-platform combination doesn't exist\n" +
+                                            "Try to use different version 'new MinioTestServer({ binary: { version: 'X.Y.Z' } })'\n" +
+                                            "List of available versions can be found here: " +
+                                            "https://www.miniob.com/download-center/community/releases/archive"
+                                        )
+                                    )
+
+                                    return
+                                }
+
+                                reject(
+                                    new DownloadError(
+                                        downloadUrl,
+                                        `Status Code isn't 200! (it is ${response.statusCode})`
+                                    )
                                 )
-                            )
 
-                            return
-                        }
-
-                        reject(
-                            new DownloadError(
-                                downloadUrl,
-                                `Status Code isnt 200! (it is ${response.statusCode})`
-                            )
-                        )
-
-                        return
-                    }
-                    if (typeof response.headers["content-length"] != "string") {
-                        reject(
-                            new DownloadError(
-                                downloadUrl,
-                                'Response header "content-length" is empty!'
-                            )
-                        )
-
-                        return
-                    }
-
-                    this.dlProgress.current = 0
-                    this.dlProgress.length = parseInt(
-                        response.headers["content-length"],
-                        10
-                    )
-                    this.dlProgress.totalMb =
-                        Math.round((this.dlProgress.length / 1048576) * 10) / 10
-
-                    const fileStream = createWriteStream(tempDownloadLocation)
-
-                    response.pipe(fileStream)
-
-                    fileStream.on("finish", async () => {
-                        if (
-                            this.dlProgress.current < this.dlProgress.length &&
-                            !httpOptions.path?.endsWith(".md5")
-                        ) {
-                            reject(
-                                new DownloadError(
-                                    downloadUrl,
-                                    `Too small (${this.dlProgress.current} bytes) minio binary downloaded.`
+                                return
+                            }
+                            if (typeof response.headers["content-length"] != "string") {
+                                reject(
+                                    new DownloadError(
+                                        downloadUrl,
+                                        'Response header "content-length" is empty!'
+                                    )
                                 )
+
+                                return
+                            }
+
+                            this.dlProgress.current = 0
+                            this.dlProgress.length = parseInt(
+                                response.headers["content-length"],
+                                10
                             )
+                            this.dlProgress.totalMb =
+                                Math.round((this.dlProgress.length / 1048576) * 10) / 10
 
-                            return
-                        }
+                            const fileStream = createWriteStream(tempDownloadLocation)
 
-                        this.printDownloadProgress({length: 0}, true)
+                            response.pipe(fileStream)
 
-                        fileStream.close()
-                        await fspromises.rename(tempDownloadLocation, downloadLocation)
-                        log(
-                            `httpDownload: moved "${tempDownloadLocation}" to "${downloadLocation}"`
-                        )
+                            fileStream.on("finish", async () => {
+                                if (
+                                    this.dlProgress.current < this.dlProgress.length &&
+                                    !httpOptions.path?.endsWith(".md5")
+                                ) {
+                                    reject(
+                                        new DownloadError(
+                                            downloadUrl,
+                                            `Too small (${this.dlProgress.current} bytes) minio binary downloaded.`
+                                        )
+                                    )
 
-                        resolve(downloadLocation)
-                    })
+                                    return
+                                }
 
-                    response.on("data", chunk => {
-                        this.printDownloadProgress(chunk)
-                    })
+                                this.printDownloadProgress({length: 0}, true)
 
-                    response.on("error", err => {
-                        fileStream.close();
-                        reject(
-                            new DownloadError(
-                                downloadUrl,
-                                `Error during response: ${err.message} and stack: ${err.stack}`
-                            )
-                        );
-                    });
-                })
-                .on("error", err => {
-                    // log it without having debug enabled
-                    console.error(`Unable to download "${downloadUrl}" with error: ${err.message} and stack: ${err.stack}`)
-                    reject(new DownloadError(downloadUrl, err.message))
-                })
-        })
+                                fileStream.close()
+                                await fspromises.rename(tempDownloadLocation, downloadLocation)
+                                log(
+                                    `httpDownload: moved "${tempDownloadLocation}" to "${downloadLocation}"`
+                                )
+
+                                resolve(downloadLocation)
+                            })
+
+                            response.on("data", chunk => {
+                                this.printDownloadProgress(chunk)
+                            })
+
+                            response.on("error", err => {
+                                fileStream.close();
+                                reject(
+                                    new DownloadError(
+                                        downloadUrl,
+                                        `Error during response: ${err.message} and stack: ${err.stack}`
+                                    )
+                                );
+                            });
+                        })
+                        .on("error", err => {
+                            // log it without having debug enabled
+                            console.error(`Unable to download "${downloadUrl}" with error: ${err.message} and stack: ${err.stack}`)
+                            reject(new DownloadError(downloadUrl, err.message))
+                        })
+                });
+            } catch (error) {
+                log(`httpDownload: attempt ${attempt} failed with error: ${error.message}`);
+                if (attempt >= maxRetries) {
+                    throw error;
+                }
+                log(`httpDownload: retrying download, attempt ${attempt + 1}`);
+            }
+        }
     }
 
     /**
