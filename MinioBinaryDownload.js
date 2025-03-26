@@ -435,7 +435,7 @@ class MinioBinaryDownload {
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                const response = await fetch(url);
+                const response = await fetch(url, httpOptions);
 
                 if (!response.ok) {
                     if (response.status === 403) {
@@ -471,6 +471,8 @@ class MinioBinaryDownload {
                 if (attempt === maxRetries) {
                     throw new DownloadError(downloadUrl, `Failed after ${maxRetries} attempts: ${error.message}`);
                 }
+                const backoffTime = Math.pow(2, attempt) * 1000 + Math.random() * 1000; // Exponential backoff with jitter
+                await new Promise(resolve => setTimeout(resolve, backoffTime));
             }
         }
     }
