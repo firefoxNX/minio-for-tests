@@ -427,8 +427,9 @@ class MinioBinaryDownload {
      * @param httpOptions The httpOptions directly passed to https.get
      * @param downloadLocation The location the File should be after the download
      * @param tempDownloadLocation The location the File should be while downloading
+     * @param maxRetries
      */
-    async httpDownload(url, httpOptions, downloadLocation, tempDownloadLocation, maxRetries = 3) {
+    async httpDownload(url, httpOptions, downloadLocation, tempDownloadLocation, maxRetries = 10) {
         log(`httpDownload: Downloading "${url}" downloadLocation = "${downloadLocation}" tempDownloadLocation = "${tempDownloadLocation}" httpOptions = "${JSON.stringify(httpOptions)}"`);
         const downloadUrl = this.assignDownloadingURL(url);
 
