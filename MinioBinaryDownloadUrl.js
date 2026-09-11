@@ -42,26 +42,64 @@ class MinioBinaryDownloadUrl {
             return url.toString()
         }
 
-        // const archive = await this.getArchiveName()
-        const archive = 'archive'
-        log(`Using "${archive}" as the Archive String`)
+        const mirror = resolveConfig(ResolveConfigVariables.DOWNLOAD_MIRROR)
 
-        const mirror =
-            resolveConfig(ResolveConfigVariables.DOWNLOAD_MIRROR) ??
-            "https://dl.min.io/server/minio/release"
-        log(`Using "${mirror}" as the mirror`)
+        if (mirror) {
+            // Legacy dl.min.io layout: <mirror>/<platform>-<arch>/archive/<version>
+            // (dl.min.io/server/minio/release itself answers 410 Gone since 2026; use this
+            // only for an internal mirror that kept that layout)
+            log(`Using "${mirror}" as the mirror`)
 
-        const url = new URL(mirror)
+            const url = new URL(mirror)
 
-        // ensure that the "mirror" path ends with "/"
+            // ensure that the "mirror" path ends with "/"
+            if (!url.pathname.endsWith("/")) {
+                url.pathname = url.pathname + "/"
+            }
+
+            // no extra "/" between "pathname" and "platform", because of the "if" statement above to ensure "url.pathname" to end with "/"
+            url.pathname = `${url.pathname}${this.platform}-${this.arch}/archive/${this.version}`
+
+            return url.toString()
+        }
+
+        // Default: the community binaries attached to the GitHub release.
+        // MinIO shut down https://dl.min.io/server/minio/release (410 Gone) and the replacement
+        // https://dl.min.io/aistor/minio/release serves the commercial AIStor build, which denies
+        // every S3 call without a license. The GitHub release assets are the community build:
+        // https://github.com/minio/minio/releases/download/<TAG>/minio.<platform>-<arch>.<TAG>
+        const releases =
+            resolveConfig(ResolveConfigVariables.GITHUB_RELEASES) ??
+            "https://github.com/minio/minio/releases/download"
+        const tag = this.getReleaseTag()
+        const url = new URL(releases)
+
         if (!url.pathname.endsWith("/")) {
             url.pathname = url.pathname + "/"
         }
 
-        // no extra "/" between "pathname" and "platform", because of the "if" statement above to ensure "url.pathname" to end with "/"
-        url.pathname = `${url.pathname}${this.platform}-${this.arch}/${archive}/${this.version}`
+        url.pathname = `${url.pathname}${tag}/${this.getGithubAssetName(tag)}`
+        log(`Using GitHub release asset "${url}"`)
 
         return url.toString()
+    }
+
+    /**
+     * The release tag as used by GitHub, i.e. the version without the "minio." prefix
+     * @example minio.RELEASE.2025-09-07T16-13-09Z -> RELEASE.2025-09-07T16-13-09Z
+     */
+    getReleaseTag() {
+        return this.version.replace(/^minio\./, "")
+    }
+
+    /**
+     * Name of the binary asset attached to the GitHub release
+     * @example minio.linux-amd64.RELEASE.2025-09-07T16-13-09Z
+     */
+    getGithubAssetName(tag = this.getReleaseTag()) {
+        const exe = this.platform === "windows" ? ".exe" : ""
+
+        return `minio.${this.platform}-${this.arch}.${tag}${exe}`
     }
 
     /**

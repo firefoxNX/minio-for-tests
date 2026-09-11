@@ -20,8 +20,8 @@ const run = async () => {
     }
     fs.mkdirSync(dataPath);
     minioServerInstance = await minioServer.create({
-        instance: {port: 63208, dataPath: dataPath},
-        binary: { version: 'minio.RELEASE.2025-03-12T18-04-18Z', launchTimeout: 20000 }
+        instance: {port: 63208, dataPath: dataPath, launchTimeout: 20000},
+        binary: { version: 'minio.RELEASE.2025-09-07T16-13-09Z' }
     });
     console.log('Minio server started');
     const s3Client = new S3Client({

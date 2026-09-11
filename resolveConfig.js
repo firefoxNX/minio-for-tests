@@ -18,6 +18,7 @@ let ResolveConfigVariables
     ResolveConfigVariables["DEBUG"] = "DEBUG"
     ResolveConfigVariables["DOWNLOAD_MIRROR"] = "DOWNLOAD_MIRROR"
     ResolveConfigVariables["DOWNLOAD_URL"] = "DOWNLOAD_URL"
+    ResolveConfigVariables["GITHUB_RELEASES"] = "GITHUB_RELEASES"
     ResolveConfigVariables["PREFER_GLOBAL_PATH"] = "PREFER_GLOBAL_PATH"
     ResolveConfigVariables["DISABLE_POSTINSTALL"] = "DISABLE_POSTINSTALL"
     ResolveConfigVariables["SYSTEM_BINARY"] = "SYSTEM_BINARY"
@@ -36,7 +37,9 @@ let ResolveConfigVariables
 /** The Prefix for Environmental values */
 const ENV_CONFIG_PREFIX = "MINIOTST_"
 /** This Value exists here, because "defaultValues" can be changed with "setDefaultValue", but this property is constant */
-const DEFAULT_VERSION = "minio.RELEASE.2025-02-07T23-21-09Z"
+// Last community MinIO release that has binaries attached to its GitHub release
+// (RELEASE.2025-10-15T17-29-55Z has none; later builds are AIStor-only).
+const DEFAULT_VERSION = "minio.RELEASE.2025-09-07T16-13-09Z"
 /** Default values for some config options that require explicit setting, it is constant so that the default values cannot be interfered with */
 const defaultValues = new Map([
     // apply app-default values here

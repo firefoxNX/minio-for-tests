@@ -1,10 +1,10 @@
 {
   "name": "minio-for-tests",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js"
   },
   "dependencies": {
     "async-mutex": "0.5.0",
@@ -27,5 +27,9 @@
     "type": "git",
     "url": "https://github.com/firefoxNX/minio-for-tests.git"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@aws-sdk/client-s3": "3.772.0",
+    "@aws-sdk/lib-storage": "3.772.0"
+  }
 }

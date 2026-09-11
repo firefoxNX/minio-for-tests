@@ -139,56 +139,23 @@ class DryMinioBinary {
     parseArchiveNameRegex(input, opts) {
         log(`parseArchiveNameRegex (input: "${input}")`)
 
-        const archiveMatches = /minio-(?<platform>linux|win32|osx|macos)(?:-ssl-|-)(?<arch>\w{4,})(?:-(?<dist>\w+)|)(?:-ssl-|-)(?:v|)(?<version>[\d.]+(?:-latest|))\./gim.exec(
-            input
-        )
+        // MinIO asset / archive names: "minio.linux-amd64.RELEASE.2025-09-07T16-13-09Z[.exe]"
+        // (GitHub release asset) or ".../linux-amd64/archive/minio.RELEASE.2025-09-07T16-13-09Z"
+        // (legacy dl.min.io layout)
+        const assetMatches = /minio\.(?<platform>linux|darwin|windows)-(?<arch>amd64|arm64)\.(?<version>RELEASE\.[\dTZ-]+)/i.exec(input)
+        const legacyMatches = /(?<platform>linux|darwin|windows)-(?<arch>amd64|arm64)\/archive\/(?<version>minio\.RELEASE\.[\dTZ-]+)/i.exec(input)
+        const groups = assetMatches?.groups ?? legacyMatches?.groups
 
-        assertion(
-            !isNullOrUndefined(archiveMatches),
-            new NoRegexMatchError("input")
-        )
+        if (isNullOrUndefined(groups)) {
+            log("parseArchiveNameRegex: input does not look like a MinIO asset name, keeping the given options")
 
-        // this error is kinda impossible to test, because the regex we use either has matches that are groups or no matches
-        assertion(
-            !isNullOrUndefined(archiveMatches.groups),
-            new NoRegexMatchError("input", "groups")
-        )
-
-        const groups = archiveMatches.groups
-
-        assertion(
-            typeof groups.version === "string" && groups.version.length > 1,
-            new ParseArchiveRegexError("version")
-        )
-        // the following 2 assertions are hard to test, because the regex has restrictions that are more strict than the assertions
-        assertion(
-            typeof groups.platform === "string" && groups.platform.length > 1,
-            new ParseArchiveRegexError("platform")
-        )
-        assertion(
-            typeof groups.arch === "string" && groups.arch.length >= 4,
-            new ParseArchiveRegexError("arch")
-        )
-
-        opts.version = groups.version
-        opts.arch = groups.arch
-
-        if (groups.platform === "linux") {
-            const distMatches = !!groups.dist
-                ? /([a-z]+)(\d*)/gim.exec(groups.dist)
-                : null
-
-            opts.os = {
-                os: "linux",
-                dist: typeof distMatches?.[1] === "string" ? distMatches[1] : "unknown",
-                // "release" should be able to be discarded in this case
-                release: ""
-            }
-        } else {
-            opts.os = {
-                os: groups.platform
-            }
+            return opts
         }
+
+        opts.version = groups.version.startsWith("minio.") ? groups.version : `minio.${groups.version}`
+        opts.arch = groups.arch.toLowerCase()
+        opts.platform = groups.platform.toLowerCase()
+        opts.os = { os: opts.platform }
 
         return opts
     }
